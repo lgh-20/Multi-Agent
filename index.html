@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅行助手 - 智能查询</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .input-container {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-field:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 18px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .welcome-message h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .welcome-message p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .chip {
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 滚动条样式 */
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .chat-container {
+                padding: 20px;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+            
+            .input-container {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 智能旅行助手</h1>
+            <p>查询天气状况 · 探索热门景点</p>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message">
+                <h2>欢迎使用旅行助手！</h2>
+                <p>我可以帮您查询各地天气信息、推荐旅游景点及当地文化习俗介绍<br>点击下方的建议或输入您的问题开始探索</p>
+                <div class="suggestion-chips">
+                    <div class="chip" onclick="sendSuggestion('北京天气怎么样？')">北京天气</div>
+                    <div class="chip" onclick="sendSuggestion('上海明天会下雨吗？')">上海天气</div>
+                    <div class="chip" onclick="sendSuggestion('推荐杭州景点')">杭州景点</div>
+                    <div class="chip" onclick="sendSuggestion('深圳现在温度多少？')">深圳温度</div>
+                </div>
+            </div>
+            <div id="messages"></div>
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <input 
+                type="text" 
+                class="input-field" 
+                id="queryInput" 
+                placeholder="输入城市名称或景点，如：查询广州天气、推荐成都景点..."
+                onkeypress="handleKeyPress(event)"
+            >
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000'; // 根据您的实际后端地址修改
+        const chatContainer = document.getElementById('chatContainer');
+        const messagesDiv = document.getElementById('messages');
+        const queryInput = document.getElementById('queryInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // 生成随机用户ID和频道ID
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        const channelId = 'channel_' + Math.random().toString(36).substr(2, 9);
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendSuggestion(text) {
+            queryInput.value = text;
+            sendMessage();
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.textContent = content;
+            
+            messageDiv.appendChild(messageContent);
+            messagesDiv.appendChild(messageDiv);
+            
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+        }
+
+        function hideTyping() {
+            typingIndicator.classList.remove('active');
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = '❌ ' + message;
+            messagesDiv.appendChild(errorDiv);
+            scrollToBottom();
+        }
+
+        async function sendMessage() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            // 添加用户消息
+            addMessage(query, true);
+            queryInput.value = '';
+            
+            // 显示输入指示器
+            showTyping();
+            
+            // 禁用发送按钮
+            sendBtn.disabled = true;
+
+            try {
+                const eventSource = new EventSource(
+                    `${API_BASE}/travel_assistant?userid=${encodeURIComponent(userId)}&channel_id=${encodeURIComponent(channelId)}&query=${encodeURIComponent(query)}`
+                );
+
+                let assistantMessage = '';
+                let messageDiv = null;
+
+                eventSource.onmessage = (event) => {
+                    if (!messageDiv) {
+                        hideTyping();
+                        messageDiv = document.createElement('div');
+                        messageDiv.className = 'message assistant';
+                        const messageContent = document.createElement('div');
+                        messageContent.className = 'message-content';
+                        messageDiv.appendChild(messageContent);
+                        messagesDiv.appendChild(messageDiv);
+                    }
+
+                    const content = event.data;
+                    if (content.trim()) {
+                        assistantMessage += content;
+                        messageDiv.querySelector('.message-content').textContent = assistantMessage;
+                        scrollToBottom();
+                    }
+                };
+
+                eventSource.onerror = (error) => {
+                    hideTyping();
+                    if (!assistantMessage) {
+                        showError('连接失败，请检查后端服务是否正常运行');
+                    }
+                    eventSource.close();
+                    sendBtn.disabled = false;
+                };
+
+                // 超时处理
+                setTimeout(() => {
+                    if (eventSource.readyState !== EventSource.CLOSED) {
+                        eventSource.close();
+                        sendBtn.disabled = false;
+                    }
+                }, 30000); // 30秒超时
+
+            } catch (error) {
+                hideTyping();
+                showError('请求失败: ' + error.message);
+                sendBtn.disabled = false;
+            }
+        }
+
+        // 自动聚焦输入框
+        queryInput.focus();
+
+        // 滚动到底部
+        scrollToBottom();
+    </script>
+</body>
+</html>
